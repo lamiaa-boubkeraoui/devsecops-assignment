@@ -18,11 +18,12 @@ jobs:
     # =========================
     - name: SAST with Semgrep
       uses: returntocorp/semgrep-action@v1
-      with:
-        config: "p/ci"
-        path: "."
       env:
         SEMGREP_FAIL_ON_ERROR: "true"
+        PYTHONIOENCODING: "utf-8"
+      with:
+         config: "p/ci"
+         path: "."
     # =========================
     # Analyse sécurité Python
     # =========================
