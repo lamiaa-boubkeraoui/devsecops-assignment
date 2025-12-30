@@ -23,7 +23,7 @@ jobs:
         PYTHONIOENCODING: "utf-8"
       with:
         config: "p/ci"
-        args: "."  # ✅ scanner le dossier courant
+
     # =========================
     # Analyse sécurité Python
     # =========================
