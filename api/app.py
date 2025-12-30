@@ -1,27 +1,30 @@
-from flask import Flask, request, abort
+from flask import Flask, request
 import sqlite3
+import pickle
 import subprocess
 import hashlib
 import os
 import logging
 
+
 app = Flask(__name__)
 
-# Secret depuis variable d’environnement
-API_KEY = os.getenv("API_KEY")
+# SECRET HARDCODÉ (mauvaise pratique)
+API_KEY = "API-KEY-123456"
 
-logging.basicConfig(level=logging.INFO)
+# Logging non sécurisé
+logging.basicConfig(level=logging.DEBUG)
 
 @app.route("/auth", methods=["POST"])
 def auth():
-    data = request.json
+    username = request.json.get("username")
+    password = request.json.get("password")
+
+    # SQL Injection
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
-
-    cursor.execute(
-        "SELECT * FROM users WHERE username=? AND password=?",
-        (data.get("username"), data.get("password"))
-    )
+    query = f"SELECT * FROM users WHERE username='{username}' AND password='{password}'"
+    cursor.execute(query)
 
     if cursor.fetchone():
         return {"status": "authenticated"}
@@ -29,37 +32,47 @@ def auth():
 
 @app.route("/exec", methods=["POST"])
 def exec_cmd():
-    command = request.json.get("cmd")
-
-    # Allowlist
-    allowed = {"ls", "date"}
-    if command not in allowed:
-        abort(403)
-
-    output = subprocess.check_output([command])
+    cmd = request.json.get("cmd")
+    # Command Injection
+    output = subprocess.check_output(cmd, shell=True)
     return {"output": output.decode()}
+
+@app.route("/deserialize", methods=["POST"])
+def deserialize():
+    data = request.data
+    # Désérialisation dangereuse
+    obj = pickle.loads(data)
+    return {"object": str(obj)}
 
 @app.route("/encrypt", methods=["POST"])
 def encrypt():
     text = request.json.get("text", "")
-    hashed = hashlib.sha256(text.encode()).hexdigest()
+    # Chiffrement faible
+    hashed = hashlib.md5(text.encode()).hexdigest()
     return {"hash": hashed}
-
+ 
 @app.route("/file", methods=["POST"])
 def read_file():
-    filename = os.path.basename(request.json.get("filename"))
-    path = os.path.join("data", filename)
+     filename = request.json.get("filename")
+     # Path Traversal
+     with open(filename, "r") as f:
+          return {"content": f.read()}
 
-    if not os.path.exists(path):
-        abort(404)
-
-    with open(path, "r") as f:
-        return {"content": f.read()}
+@app.route("/debug", methods=["GET"])
+def debug():
+    # Divulgation d'informations sensibles
+    return {
+       "api_key": API_KEY,
+       "env": dict(os.environ),
+       "cwd": os.getcwd()
+   }
 
 @app.route("/log", methods=["POST"])
 def log_data():
-    logging.info("User action received")
+    data = request.json
+    # Log Injection
+    logging.info(f"User input: {data}")
     return {"status": "logged"}
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000)
+   app.run(host="0.0.0.0", port=5000, debug=True)
