@@ -1,0 +1,56 @@
+name: DevSecOps Pipeline
+
+on:
+  push:
+    branches: ["main"]
+    
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # =========================
+    # SAST - Analyse du code
+    # =========================
+    - name: SAST with Semgrep
+      uses: returntocorp/semgrep-action@v1
+      with:
+        config: "auto"
+      env:
+        SEMGREP_FAIL_ON_ERROR: "true"
+
+    # =========================
+    # Analyse sécurité Python
+    # =========================
+    - name: Python Security Analysis (Bandit)
+      run: |
+        pip install bandit
+        bandit -r . -ll
+
+    # =========================
+    # Scan dépendances Python
+    # =========================
+    - name: Dependency Scan (Safety)
+      run: |
+        pip install safety
+        safety check --full-report
+
+    # =========================
+    # Build image Docker
+    # =========================
+    - name: Build Docker image
+      run: docker build -t app-secure .
+
+    # =========================
+    # Scan vulnérabilités Docker
+    # =========================
+    - name: Docker Image Scan (Trivy)
+      uses: aquasecurity/trivy-action@0.20.0
+      with:
+        image-ref: app-secure
+        severity: HIGH,CRITICAL
+        exit-code: 1
