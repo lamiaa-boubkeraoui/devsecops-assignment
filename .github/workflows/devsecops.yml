@@ -17,7 +17,7 @@ jobs:
     # SAST - Analyse du code
     # =========================
     - name: SAST with Semgrep
-      uses: returntocorp/semgrep-action@v4.2.0
+      uses: returntocorp/semgrep-action@v1
       with:
         config: "p/ci"
         path: "."
